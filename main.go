@@ -1,9 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+
 	"github.com/gocolly/colly"
 )
 
@@ -33,23 +36,25 @@ func main() {
 		publicationType := strings.TrimSpace(selection.Find("div.slot-6").Text())
 		ul := selection.Find("div.slot-7-8-9>ul").Children()
 		for i := 0; i < ul.Length(); i++ {
-			var publication Publication
-
 			li := ul.Eq(i)
 			publicationText := standardizeSpaces(li.Text())
+
+			var publication Publication
+
+			var publicationTitle string
+			var publicationURL string
+
 			authorsString := strings.Split(publicationText, "\"")[0]
 			publicationAuthors := strings.Split(authorsString, "., ")
+
 			publicationYear := strings.Split(publicationText, " ")[len(strings.Split(publicationText, " "))-1]
 			publicationMonth := strings.Split(publicationText, " ")[len(strings.Split(publicationText, " "))-2]
 			publicationDate := publicationMonth + " " + publicationYear
 
-			var publicationTitle string
-
-			if len(strings.Split(authorsString, "\"")) != 1 {
-				publicationTitle = strings.Split(authorsString, "\"")[1]
+			if len(strings.Split(publicationText, "\"")) > 2 {
+				publicationTitle = strings.Split(publicationText, "\"")[1]
 			}
 
-			var publicationURL string
 			value, exists := li.Find("a").Attr("href")
 			if exists {
 				publicationURL = value
@@ -76,7 +81,10 @@ func main() {
 			return
 		}
 
-		fmt.Println(string(p))
+		err = os.WriteFile("publications.json", p, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
 	})
 
 	c.OnRequest(func(r *colly.Request) {
