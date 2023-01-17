@@ -3,35 +3,21 @@ package main
 import (
 	"fmt"
 	"strings"
-
+	"encoding/json"
 	"github.com/gocolly/colly"
 )
-
-type Publication struct {
-	title   string
-	authors []string
-	date    string
-}
 
 // Trims excessive spaces from a string
 func standardizeSpaces(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-func getPublicationFromString(s string) Publication {
-	authorsString := strings.Split(s, "\"")[0]
-	authors := strings.Split(authorsString, "., ")
-
-	title := strings.Split(s, "\"")[1]
-	year := strings.Split(s, " ")[len(strings.Split(s, " "))-1]
-	month := strings.Split(s, " ")[len(strings.Split(s, " "))-2]
-	
-	date := month + " " + year
-	return Publication{
-		title:   title,
-		authors: authors,
-		date:    date,
-	}
+type Publication struct {
+	Title   string   `json:"title"`
+	Url     string   `json:"url"`
+	Authors []string `json:"authors"`
+	Type    string   `json:"type"`
+	Date    string   `json:"date"`
 }
 
 func main() {
@@ -41,12 +27,56 @@ func main() {
 		colly.AllowedDomains("www.eecs.ucf.edu"),
 	)
 
-	c.OnHTML("ul[class='noicon loose']>li", func(e *colly.HTMLElement) {
-		sanitizedText := standardizeSpaces(e.Text)
+	c.OnHTML("div#publications>div.row:not(.year)", func(e *colly.HTMLElement) {
+		selection := e.DOM
 
-		publication := getPublicationFromString(sanitizedText)
-		println(publication.title)
-		publications = append(publications, publication)
+		publicationType := strings.TrimSpace(selection.Find("div.slot-6").Text())
+		ul := selection.Find("div.slot-7-8-9>ul").Children()
+		for i := 0; i < ul.Length(); i++ {
+			var publication Publication
+
+			li := ul.Eq(i)
+			publicationText := standardizeSpaces(li.Text())
+			authorsString := strings.Split(publicationText, "\"")[0]
+			publicationAuthors := strings.Split(authorsString, "., ")
+			publicationYear := strings.Split(publicationText, " ")[len(strings.Split(publicationText, " "))-1]
+			publicationMonth := strings.Split(publicationText, " ")[len(strings.Split(publicationText, " "))-2]
+			publicationDate := publicationMonth + " " + publicationYear
+
+			var publicationTitle string
+
+			if len(strings.Split(authorsString, "\"")) != 1 {
+				publicationTitle = strings.Split(authorsString, "\"")[1]
+			}
+
+			var publicationURL string
+			value, exists := li.Find("a").Attr("href")
+			if exists {
+				publicationURL = value
+			}
+
+			publication = Publication{
+				Type:    publicationType,
+				Url:     publicationURL,
+				Authors: publicationAuthors,
+				Title:   publicationTitle,
+				Date:    publicationDate,
+			}
+
+			publications = append(publications, publication)
+		}
+	})
+
+	c.OnScraped(func(r *colly.Response) {
+		fmt.Println("Finished", r.Request.URL)
+
+		p, err := json.Marshal(publications)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println(string(p))
 	})
 
 	c.OnRequest(func(r *colly.Request) {
@@ -58,4 +88,5 @@ func main() {
 	})
 
 	c.Visit("https://www.eecs.ucf.edu/isuelab/publications/")
+
 }
