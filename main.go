@@ -16,6 +16,7 @@ func main() {
 	case 1:
 		collectors.GetPublications()
 	case 2:
-	case 3:	
+		collectors.GetPeople()
+	case 3:
 	}
 }

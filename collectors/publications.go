@@ -7,9 +7,37 @@ import (
 	"os"
 	"strings"
 
+	"github.com/LightBounded/lab-site-scraper/utils"
+
 	"github.com/gocolly/colly"
 )
 
+type Publication struct {
+	Title   string   `json:"title"`
+	Url     string   `json:"url"`
+	Authors []string `json:"authors"`
+	Type    string   `json:"type"`
+	Date    string   `json:"date"`
+}
+
+func cleanAuthors(authors []string) []string {
+	newAuthors := []string{}
+
+	for _, author := range authors {
+		if len(author) == 0 {
+			continue
+		}
+
+		author = strings.Trim(author, " ")
+		author = strings.ReplaceAll(author, "and ", "")
+		author = strings.ReplaceAll(author, ".", "")
+
+		newAuthors = append(newAuthors, author)
+	}
+	return newAuthors
+}
+
+// TODO: Clean up this function
 func GetPublications() {
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.eecs.ucf.edu"),
@@ -24,7 +52,7 @@ func GetPublications() {
 		ul := selection.Find("div.slot-7-8-9>ul").Children()
 		for i := 0; i < ul.Length(); i++ {
 			li := ul.Eq(i)
-			publicationText := TrimExcessiveSpaces(li.Text())
+			publicationText := utils.TrimExcessiveSpaces(li.Text())
 
 			var publication Publication
 
@@ -89,33 +117,4 @@ func GetPublications() {
 	})
 
 	c.Visit("https://www.eecs.ucf.edu/isuelab/publications/")
-}
-
-func TrimExcessiveSpaces(s string) string {
-	return strings.Join(strings.Fields(s), " ")
-}
-
-func cleanAuthors(authors []string) []string {
-	newAuthors := []string{}
-
-	for _, author := range authors {
-		if len(author) == 0 {
-			continue
-		}
-
-		author = strings.Trim(author, " ")
-		author = strings.ReplaceAll(author, "and ", "")
-		author = strings.ReplaceAll(author, ".", "")
-
-		newAuthors = append(newAuthors, author)
-	}
-	return newAuthors
-}
-
-type Publication struct {
-	Title   string   `json:"title"`
-	Url     string   `json:"url"`
-	Authors []string `json:"authors"`
-	Type    string   `json:"type"`
-	Date    string   `json:"date"`
 }
