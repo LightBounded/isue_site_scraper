@@ -11,15 +11,28 @@ import (
 	"github.com/gocolly/colly"
 )
 
-type Person struct {
-	Name           string
-	ImageUrl       string
-	Type           string
-	AdditionalInfo string
+type People struct {
+	Director              Person   `json:"director"`
+	AssociateDirector     Person   `json:"associateDirector"`
+	AffiliatedFaculty     []Person `json:"affiliatedFaculty"`
+	ResearchStaff         []Person `json:"researchStaff"`
+	PhdStudents           []Person `json:"phdStudents"`
+	MastersStudents       []Person `json:"mastersStudents"`
+	UndergraduateStudents []Person `json:"undergraduateStudents"`
+	Alumni                []Person `json:"alumni"`
+	FormerVisitors        []Person `json:"formerVisitors"`
 }
 
-func GetPeople() []Person {
-	people := []Person{}
+type Person struct {
+	Name           string `json:"name"`
+	PageURL        string `json:"pageURL"`
+	ImageURL       string `json:"imageURL"`
+	Type           string `json:"type"`
+	AdditionalInfo string `json:"additionalInfo"`
+}
+
+func GetPeople() People {
+	people := People{}
 
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.eecs.ucf.edu"),
@@ -35,20 +48,40 @@ func GetPeople() []Person {
 
 			personImage := s.Find("img")
 			personInfo := s.Find("div.invisible")
-
+			personPageURL := strings.Split(s.Find("a").AttrOr("href", ""), ".")[0]
 			// The name of the person is in the alt attribute of the image
-			// but for some the alt attribute is misppelled
+			// but for some, the alt attribute is misppelled
 			// so we get the name from the span with the class nametext of the
 			// invisible div containing additional information about the person
 			if person.Name = personImage.AttrOr("alt", ""); person.Name == "" {
 				person.Name = strings.TrimSpace(personInfo.Find("span.nametext").Text())
 			}
 
-			person.ImageUrl = personImage.AttrOr("src", "")
+			person.ImageURL = personImage.AttrOr("src", "")
 			person.Type = personType
 			person.AdditionalInfo = personInfo.Find("span:last-of-type").Text()
+			person.PageURL = strings.ToLower(personPageURL)
 
-			people = append(people, person)
+			switch personType {
+			case "Director":
+				people.Director = person
+			case "Associate Director":
+				people.AssociateDirector = person
+			case "Affiliated Faculty":
+				people.AffiliatedFaculty = append(people.AffiliatedFaculty, person)
+			case "Research Staff":
+				people.ResearchStaff = append(people.ResearchStaff, person)
+			case "Ph.D. Students":
+				people.PhdStudents = append(people.PhdStudents, person)
+			case "Masters Students":
+				people.MastersStudents = append(people.MastersStudents, person)
+			case "Undergraduate Students":
+				people.UndergraduateStudents = append(people.UndergraduateStudents, person)
+			case "Alumni":
+				people.Alumni = append(people.Alumni, person)
+			case "Former Visitors":
+				people.FormerVisitors = append(people.FormerVisitors, person)
+			}
 		})
 	})
 
