@@ -48,7 +48,15 @@ func GetPeople() People {
 
 			personImage := s.Find("img")
 			personInfo := s.Find("div.invisible")
-			personPageURL := strings.Split(s.Find("a").AttrOr("href", ""), ".")[0]
+
+			personPageURL := s.Find("a").AttrOr("href", "")
+
+			// If the url is prefixed with "http" it is a link to another page
+			// otherwise it is a route
+			if !strings.HasPrefix(personPageURL, "http") {
+				personPageURL = strings.Split(personPageURL, ".")[0]
+			}
+			
 			// The name of the person is in the alt attribute of the image
 			// but for some, the alt attribute is misppelled
 			// so we get the name from the span with the class nametext of the
